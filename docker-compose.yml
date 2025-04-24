@@ -7,9 +7,9 @@ services:
     container_name: traefik
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"  # Traefik dashboard
+      - "3080:80"     # Changed from 80:80
+      - "3443:443"    # Changed from 443:443
+      - "7000:8080"   # Changed from 8080:8080 for dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./data/traefik/acme.json:/acme.json:rw
@@ -40,7 +40,7 @@ services:
       - "traefik.http.routers.authelia.rule=Host(`auth.localhost`)"
       - "traefik.http.services.authelia.loadbalancer.server.port=9091"
       - "traefik.http.routers.authelia.entrypoints=web"
-      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/verify?rd=http://auth.localhost"
+      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/verify?rd=http://auth.localhost:3080"
       - "traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true"
       - "traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email"
 
@@ -54,7 +54,7 @@ services:
       - USER_GID=1000
       - GITEA__database__DB_TYPE=sqlite3
       - GITEA__server__DOMAIN=gitea.localhost
-      - GITEA__server__ROOT_URL=http://gitea.localhost
+      - GITEA__server__ROOT_URL=http://gitea.localhost:3080
     volumes:
       - ./data/gitea:/data
       - /etc/timezone:/etc/timezone:ro
