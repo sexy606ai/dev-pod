@@ -1,0 +1,18 @@
+# Traefik Dashboard Configuration
+# This file contains configuration for the Traefik dashboard
+
+http:
+  routers:
+    dashboard:
+      rule: Host(`traefik.localhost`)
+      service: api@internal
+      entryPoints:
+        - web
+      middlewares:
+        - auth
+  
+  middlewares:
+    auth:
+      basicAuth:
+        users:
+          - "admin:$apr1$l4xdcyxx$Jn/4qOS9bJjxhkAOPyK0C/"  # admin:admin123

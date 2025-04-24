@@ -1,0 +1,28 @@
+# VS Code Extensions to Install
+# This file contains a list of recommended extensions for the DevPod environment
+
+# Docker support
+ms-azuretools.vscode-docker
+
+# Git integration
+eamodio.gitlens
+
+# Development languages support
+dbaeumer.vscode-eslint
+esbenp.prettier-vscode
+ms-python.python
+golang.go
+redhat.java
+rust-lang.rust-analyzer
+
+# Remote development
+ms-vscode-remote.remote-containers
+
+# Themes and UI
+dracula-theme.theme-dracula
+pkief.material-icon-theme
+
+# Productivity
+streetsidesoftware.code-spell-checker
+yzhang.markdown-all-in-one
+ritwickdey.liveserver

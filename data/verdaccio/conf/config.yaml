@@ -1,0 +1,35 @@
+{
+  "storage": "/verdaccio/storage",
+  "auth": {
+    "htpasswd": {
+      "file": "/verdaccio/storage/htpasswd"
+    }
+  },
+  "uplinks": {
+    "npmjs": {
+      "url": "https://registry.npmjs.org/"
+    }
+  },
+  "packages": {
+    "@*/*": {
+      "access": "$all",
+      "publish": "$authenticated",
+      "proxy": "npmjs"
+    },
+    "**": {
+      "access": "$all",
+      "publish": "$authenticated",
+      "proxy": "npmjs"
+    }
+  },
+  "web": {
+    "title": "DevPod NPM Registry",
+    "logo": "https://verdaccio.org/img/logo/svg/verdaccio-tiny.svg",
+    "primary_color": "#4b5e40"
+  },
+  "log": {
+    "type": "stdout",
+    "format": "pretty",
+    "level": "http"
+  }
+}

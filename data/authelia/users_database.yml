@@ -1,0 +1,14 @@
+users:
+  admin:
+    displayname: "DevPod Admin"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$UnVDVnNjMjlCL1NyZHd5dw$z/4PJ7JJKz/tFKmJr9QWrxmNxCRnwMn/WOK6uSJ8M9U"  # Password: admin123
+    email: admin@example.com
+    groups:
+      - admins
+      - developers
+  user:
+    displayname: "DevPod User"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$ZXFSNHhFUTRBQUFBQUFBQQ$O5xcwN2IMIsHH5wJ7fXml6CRLVgWOaAU8uAL8MRuTu4"  # Password: user123
+    email: user@example.com
+    groups:
+      - developers

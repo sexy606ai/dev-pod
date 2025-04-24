@@ -1,0 +1,204 @@
+version: '3'
+
+services:
+  # Traefik - Reverse Proxy
+  traefik:
+    image: traefik:v2.9
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/traefik/acme.json:/acme.json:rw
+      - ./data/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./data/traefik/config:/etc/traefik/config:ro
+    networks:
+      - devpod_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=web"
+      - "traefik.http.routers.traefik.middlewares=authelia@docker"
+      
+  # Authelia - Single Sign-On
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia
+    restart: unless-stopped
+    volumes:
+      - ./data/authelia/configuration.yml:/config/configuration.yml:ro
+      - ./data/authelia/users_database.yml:/config/users_database.yml:ro
+      - ./data/authelia:/config
+    networks:
+      - devpod_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.authelia.rule=Host(`auth.localhost`)"
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+      - "traefik.http.routers.authelia.entrypoints=web"
+      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/verify?rd=http://auth.localhost"
+      - "traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email"
+
+  # Gitea - Git Server
+  gitea:
+    image: gitea/gitea:1.19
+    container_name: gitea
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__server__DOMAIN=gitea.localhost
+      - GITEA__server__ROOT_URL=http://gitea.localhost
+    volumes:
+      - ./data/gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - devpod_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitea.rule=Host(`gitea.localhost`)"
+      - "traefik.http.services.gitea.loadbalancer.server.port=3000"
+      - "traefik.http.routers.gitea.entrypoints=web"
+      - "traefik.http.routers.gitea.middlewares=authelia@docker"
+
+  # Drone CI - Server
+  drone-server:
+    image: drone/drone:2
+    container_name: drone-server
+    restart: unless-stopped
+    environment:
+      - DRONE_GITEA_SERVER=http://gitea:3000
+      - DRONE_GITEA_CLIENT_ID=${DRONE_GITEA_CLIENT_ID:-your-client-id}  # To be updated after Gitea setup
+      - DRONE_GITEA_CLIENT_SECRET=${DRONE_GITEA_CLIENT_SECRET:-your-client-secret}  # To be updated after Gitea setup
+      - DRONE_RPC_SECRET=DroneSecretKey123456789  # Secure random string
+      - DRONE_SERVER_HOST=drone.localhost
+      - DRONE_SERVER_PROTO=http
+      - DRONE_USER_CREATE=username:admin,admin:true  # Create admin user
+    volumes:
+      - ./data/drone:/data
+    networks:
+      - devpod_network
+    depends_on:
+      - gitea
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drone.rule=Host(`drone.localhost`)"
+      - "traefik.http.services.drone.loadbalancer.server.port=80"
+      - "traefik.http.routers.drone.entrypoints=web"
+      - "traefik.http.routers.drone.middlewares=authelia@docker"
+
+  # Drone CI - Runner
+  drone-runner:
+    image: drone/drone-runner-docker:1
+    container_name: drone-runner
+    restart: unless-stopped
+    environment:
+      - DRONE_RPC_PROTO=http
+      - DRONE_RPC_HOST=drone-server
+      - DRONE_RPC_SECRET=DroneSecretKey123456789  # Same as DRONE_RPC_SECRET above
+      - DRONE_RUNNER_CAPACITY=2
+      - DRONE_RUNNER_NAME=drone-runner
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - devpod_network
+    depends_on:
+      - drone-server
+
+  # Code Server - VS Code in browser
+  code-server:
+    image: codercom/code-server:latest
+    container_name: code-server
+    restart: unless-stopped
+    environment:
+      - PASSWORD=devpod_secure_password
+    volumes:
+      - ./data/code-server:/home/coder
+      - ./data/code-server/extensions.txt:/home/coder/extensions.txt
+      - ./data/code-server/setup.sh:/home/coder/setup.sh
+      - /var/run/docker.sock:/var/run/docker.sock  # For Docker integration
+    entrypoint: ["/bin/sh", "-c", "/home/coder/setup.sh && /usr/bin/entrypoint.sh --bind-addr 0.0.0.0:8080 ."]
+    networks:
+      - devpod_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.code-server.rule=Host(`code.localhost`)"
+      - "traefik.http.services.code-server.loadbalancer.server.port=8080"
+      - "traefik.http.routers.code-server.entrypoints=web"
+      - "traefik.http.routers.code-server.middlewares=authelia@docker"
+
+  # Verdaccio - NPM Registry
+  verdaccio:
+    image: verdaccio/verdaccio:5
+    container_name: verdaccio
+    restart: unless-stopped
+    volumes:
+      - ./data/verdaccio:/verdaccio/storage
+      - ./data/verdaccio/conf:/verdaccio/conf
+      - ./data/verdaccio/setup.sh:/opt/verdaccio/setup.sh
+    entrypoint: ["/bin/sh", "-c", "/opt/verdaccio/setup.sh && /usr/local/bin/docker-entrypoint.sh /opt/verdaccio/bin/verdaccio --config /verdaccio/conf/config.yaml"]
+    networks:
+      - devpod_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.verdaccio.rule=Host(`npm.localhost`)"
+      - "traefik.http.services.verdaccio.loadbalancer.server.port=4873"
+      - "traefik.http.routers.verdaccio.entrypoints=web"
+      - "traefik.http.routers.verdaccio.middlewares=authelia@docker"
+
+  # PyPI Server - Python Package Registry
+  pypi:
+    image: pypiserver/pypiserver:latest
+    container_name: pypi
+    restart: unless-stopped
+    command: -P /data/packages/.htpasswd -a /data/packages/.htpasswd /data/packages
+    volumes:
+      - ./data/pypi:/data/packages
+      - ./data/pypi/setup.sh:/data/setup.sh
+      - ./data/pypi/config.conf:/data/config.conf
+    entrypoint: ["/bin/sh", "-c", "/data/setup.sh && pypi-server run -p 8080 $@"]
+    networks:
+      - devpod_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pypi.rule=Host(`pypi.localhost`)"
+      - "traefik.http.services.pypi.loadbalancer.server.port=8080"
+      - "traefik.http.routers.pypi.entrypoints=web"
+      - "traefik.http.routers.pypi.middlewares=authelia@docker"
+
+  # Docker Registry
+  registry:
+    image: registry:2
+    container_name: registry
+    restart: unless-stopped
+    volumes:
+      - ./data/registry:/var/lib/registry
+      - ./data/registry/config.yml:/etc/docker/registry/config.yml
+      - ./data/registry/setup.sh:/setup.sh
+      - ./data/registry/auth:/auth
+    entrypoint: ["/bin/sh", "-c", "/setup.sh && /entrypoint.sh /etc/docker/registry/config.yml"]
+    networks:
+      - devpod_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.registry.rule=Host(`registry.localhost`)"
+      - "traefik.http.services.registry.loadbalancer.server.port=5000"
+      - "traefik.http.routers.registry.entrypoints=web"
+      - "traefik.http.routers.registry.middlewares=authelia@docker"
+
+# Shared volume for CI/CD pipeline
+volumes:
+  devpod_data:
+    driver: local
+
+# Network for all services
+networks:
+  devpod_network:
+    driver: bridge

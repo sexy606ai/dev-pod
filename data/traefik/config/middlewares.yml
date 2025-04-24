@@ -1,0 +1,15 @@
+# Traefik Dynamic Configuration
+# This file contains dynamic configuration for Traefik middleware
+
+http:
+  middlewares:
+    secureHeaders:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        frameDeny: true
+        sslRedirect: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        customFrameOptionsValue: "SAMEORIGIN"

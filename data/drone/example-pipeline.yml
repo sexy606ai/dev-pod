@@ -1,0 +1,31 @@
+# Drone CI Pipeline Example
+# This is a sample .drone.yml file that can be used as a template for projects
+
+kind: pipeline
+type: docker
+name: default
+
+steps:
+  - name: test
+    image: node:16
+    commands:
+      - npm install
+      - npm test
+    
+  - name: build
+    image: node:16
+    commands:
+      - npm install
+      - npm run build
+    
+  - name: publish
+    image: plugins/docker
+    settings:
+      registry: registry.localhost
+      repo: registry.localhost/myapp
+      tags:
+        - latest
+        - ${DRONE_COMMIT_SHA:0:8}
+    when:
+      branch:
+        - main

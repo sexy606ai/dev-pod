@@ -1,0 +1,22 @@
+# Docker Registry Configuration
+# This file contains configuration for the Docker Registry
+
+version: 0.1
+log:
+  level: info
+  formatter: text
+  fields:
+    service: registry
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  delete:
+    enabled: true
+http:
+  addr: :5000
+  headers:
+    X-Content-Type-Options: [nosniff]
+auth:
+  htpasswd:
+    realm: basic-realm
+    path: /auth/htpasswd
