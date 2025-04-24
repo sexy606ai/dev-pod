@@ -40,8 +40,8 @@ DevPod consists of the following core components:
 
 1. Clone the DevPod repository:
 ```bash
-git clone https://github.com/yourusername/devpod.git
-cd devpod
+git clone https://github.com/sexy606ai/dev-pod.git
+cd dev-pod
 ```
 
 2. Start the DevPod environment:

@@ -33,10 +33,10 @@ newgrp docker
 
 ```bash
 # Clone the repository
-git clone https://github.com/sexy606ai/DevPod.git
+git clone https://github.com/sexy606ai/dev-pod.git
 
 # Navigate to the DevPod directory
-cd DevPod
+cd dev-pod
 ```
 
 ### 3. Start DevPod
